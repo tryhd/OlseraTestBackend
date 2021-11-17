@@ -27,12 +27,12 @@ class ItemTaxController extends Controller
         WHERE items.`id` = ".$id."
         GROUP BY items.`id`, items.`name`");
         // dd($item);
-        $test=[];
+        $test = json_decode($item['0']);
         if($item){
             return response()->json([
                 'code' => 200,
                 'message' => 'data item tax',
-                'data' => $item,
+                'data' => $test,
             ],200);
         }else{
             return response()->json([

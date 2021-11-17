@@ -14,6 +14,16 @@ class AppServiceProvider extends ServiceProvider
     public function register()
     {
         //
+        $this->app->bind(
+            'string.helper',
+            \App\Helpers\StringHelper::class
+        );
+
+        $this->app->bind(
+            'array.helper',
+            \App\Helpers\ArrayHelper::class
+        );
+
     }
 
     /**

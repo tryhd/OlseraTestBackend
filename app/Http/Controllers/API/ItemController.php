@@ -8,13 +8,38 @@ use App\Models\Item;
 use App\Models\Tax;
 use App\Models\ItemTax;
 use Illuminate\Support\Facades\DB;
+use League\Fractal\Manager;
+use League\Fractal\Resource\Collection;
 class ItemController extends Controller
 {
     //
     public function index(){
-        $item = Item::get();
+        $itemTaxes = ItemTax::with(['item.taxes'])->paginate();
+
+        if ($itemTaxes->total() > 0) {
+            $taxArray = $itemTaxes->toArray();
+            $data = $taxArray['data'];
+            $fractal = new Manager();
+            $resource = new Collection($data, function(array $t) {
+
+                $tax = $t['item']['taxes'];
+                $allowed = ['id', 'name', 'rate'];
+                $filtered = app('array.helper')->reduceArrayMultidimensional($tax, $allowed);
+
+                return [
+                    'id' => $t['id'],
+                    'name' => $t['item']['name'],
+                    'rate' => $filtered
+                ];
+            });
+
+            $array = $fractal->createData($resource)->toArray();
+            return $array['data'];
+        }
+
+
         return response()->json([
-            'data' => $item,
+            'data' => $array,
             'code' => 200,
             'message' => 'data items'
         ], 200);
@@ -24,21 +49,15 @@ class ItemController extends Controller
         $this->validate($request,[
             'name' => 'required|min:3'
         ]);
-
         try{
-            DB::beginTransaction();
-            $item = Item::create([
-                'name' => $request->name,
-            ]);
-            $item_id = $item->id;
-            $tax = Tax::get();
-            foreach ($tax as $row){
-                $itemTax = new  ItemTax;
-                $itemTax->item_id = $item_id;
-                $itemTax->tax_id = $row->id;
-                $itemTax->save();
+            $item = new Item;
+            $item->name = $request->name;
+            if ($item->save()) {
+                $taxesId = $request->tax;
+                foreach ($taxesId as $taxId) {
+                    $item->taxes()->attach([$taxId]);
+                }
             }
-            DB:Commit();
             return response()->json([
                 'code' => 200,
                 'message' => 'berhasil simpan data',
